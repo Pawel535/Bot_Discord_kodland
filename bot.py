@@ -1,32 +1,46 @@
 import discord
-from bot_logic import gen_pass, coin_toss, random_emoji
+from discord.ext import commands
 
-# Zmienna intencje przechowuje uprawnienia bota
 intents = discord.Intents.default()
-# Włączanie uprawnienia do czytania wiadomości
 intents.message_content = True
-# Tworzenie bota w zmiennej klienta i przekazanie mu uprawnień
-client = discord.Client(intents=intents)
 
-@client.event
+bot = commands.Bot(command_prefix='$', intents=intents)
+
+questions_answers = {
+    "jakie jest najpopularniejsze język programowania?": "Python",
+    "ile jest 2 + 2?": "4",
+    "jak masz na imię?": "Jestem botem i nie mam imienia :)"
+}
+
+@bot.event
 async def on_ready():
-    print(f'Zalogowaliśmy się jako {client.user}')
+    print(f'Zalogowaliśmy się jako {bot.user}')
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-    if message.content.startswith('$hello'):
-        await message.channel.send("Cześć!")
-    elif message.content.startswith('$bye'):
-        await message.channel.send("\U0001f642")
-    elif message.content.startswith('$haslo'):
-        await message.channel.send(f"{gen_pass(10)}")
-    elif message.content.startswith('$coin'):
-        await message.channel.send(f"{coin_toss()}")
-    elif message.content.startswith('$random_emoji'):
-        await message.channel.send(f"{random_emoji()}")
+@bot.command()
+async def hello(ctx):
+    await ctx.send(f'Cześć, jestem bot {bot.user}!')
+
+@bot.command()
+async def heh(ctx, count_heh=5):
+    await ctx.send("he" * count_heh)
+
+@bot.command()
+async def pytanie(ctx, *, question):
+    question_lower = question.lower()
+    if question_lower in questions_answers:
+        answer = questions_answers[question_lower]
+        await ctx.send(f'Odpowiedź: {answer}')
     else:
-        await message.channel.send(message.content)
+        await ctx.send("Nie znam odpowiedzi na to pytanie. Jak powinna brzmieć odpowiedź?")
 
-client.run("TOKEN")
+        def check(msg):
+            return msg.author == ctx.author and msg.channel == ctx.channel
+
+        try:
+            response = await bot.wait_for('message', check=check, timeout=30.0)
+            questions_answers[question_lower] = response.content
+            await ctx.send(f"Dziękuję! Zapisano odpowiedź: {response.content}")
+        except discord.errors.TimeoutError:
+            await ctx.send("Nie otrzymałem odpowiedzi. Pytanie nie zostało zapisane.")
+
+bot.run("Token")
